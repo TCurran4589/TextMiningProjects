@@ -1,0 +1,119 @@
+---
+title: "R Notebook"
+output:
+  html_document: default
+  html_notebook: default
+---
+```{r globals, echo=FALSE, include=FALSE}
+
+library(data.table)
+library(quanteda)
+library(stringr)
+library(tidyverse)
+library(pander)
+library(acs)
+corpus<-read.csv("TestCorpus.csv", header=TRUE)
+
+corpus$Passage<-as.character(corpus$Passage)
+#corpus$Passage<-char_tolower(corpus$Passage)
+corpus$State<-tolower(str_trim(as.character(corpus$State)))
+
+text<-as.vector(corpus$Passage)
+#passages<-c(text, text2)
+cleanpassage<-function(text){
+  #text<-tolower(text)
+  text<-gsub("<92>|<93>|<94>","'",text)
+  text<-gsub("<95>","",text)
+  text<-gsub("\n"," ",text)
+  text<-gsub("\x92","'",text)
+  text<-gsub("\x94","",text)
+  text<-gsub("\x93"," ",text)
+  text<-gsub("\x95","",text)
+  text<-gsub("\x97","-",text)
+  text<-gsub("\\s\\s\\s"," ", text)
+  text<-gsub("\\s\\s"," ",text)
+  return(text)
+}
+
+text<-map(text, cleanpassage)
+
+
+corpus$Passage<-text
+corpus$Passage<-as.character(corpus$Passage)
+PASSAGES<-corpus(corpus$Passage)
+PASSAGES[["state"]]<-corpus$State
+PASSAGES[["grade"]]<-corpus$Grade
+PASSAGES[["type"]]<-corpus$Passage
+PASSAGES[["title"]]<-corpus$Passage_Title
+PASSAGES[["year"]]<-corpus$Year
+
+corpus_summary <-summary(PASSAGES)
+#View(corpus_summary,"Corpus Summary")
+```
+####Create State Subsets
+```{r state_summary, results ='hide', warnings=FALSE, tidy=TRUE}
+corpusNY <-corpus_subset(PASSAGES,state=='ny')
+corpusNY<-summary(corpusNY)
+
+corpusTX <-corpus_subset(PASSAGES,state=='tx')
+corpusTX<-summary(corpusTX)
+```
+###Heap Analysis for New York and Texas
+```{r state_heap}
+
+library(pander)
+library(quanteda)
+#Combined Heap
+pander(summary(lm(log(corpus_summary$Types) ~log(corpus_summary$Tokens))))
+
+#Texas Heap
+pander(summary(lm(log(corpusTX$Types) ~log(corpusTX$Tokens))))
+
+#New York Heap
+pander(summary(lm(log(corpusNY$Types) ~log(corpusNY$Tokens))))
+
+```
+
+```{r state_heap_graph}
+
+library(plotly)
+
+ggplotly(ggplot(corpus_summary, aes(log(corpus_summary$Types), log(corpus_summary$Tokens))) +
+  geom_smooth(method='lm')+geom_point()+facet_wrap(~state,))
+
+```
+
+
+```{r readability_state}
+#NY Readability
+readabilityNY <-corpus_subset(PASSAGES, state == 'ny')
+readbilityNY <- textstat_readability(readabilityNY, measure="Flesch.Kincaid")
+corpusNY$readbility<-readbilityNY
+yr_readability<-corpusNY[,c("year", "readbility")]
+yr_readability<-aggregate(yr_readability, by=list(yr_readability$year), FUN=mean)
+pander(yr_readability)
+#TX readability
+readabilityTX <-corpus_subset(PASSAGES, state == 'tx')
+readbilityTX <- textstat_readability(readabilityTX, measure="Flesch.Kincaid")
+corpusTX$readability<-readbilityTX
+yr_readability_tx<-corpusTX[,c("year", "readability")]
+yr_readability_tx<-aggregate(yr_readability_tx, by=list(yr_readability_tx$year), FUN=mean)
+pander(yr_readability_tx)
+```
+
+```{r readability_graph}
+OverallReadability <- textstat_readability(PASSAGES, measure="Flesch.Kincaid")
+corpus_summary$readbility<-OverallReadability
+yr_readability<-corpus_summary[,c("year", "state","readbility")]
+ggplotly(
+  ggplot(
+    yr_readability,
+    aes(x=year, y=readbility),
+    group=factor(state)
+  )+
+    geom_point(aes(color=factor(state)))+
+    geom_smooth(method="lm")+
+    facet_wrap(~state)
+)
+
+```

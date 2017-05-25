@@ -1,0 +1,52 @@
+"0","#NY Readability"
+"0","readabilityNY <-corpus_subset(PASSAGES, state == 'ny')"
+"0","readbilityNY <- textstat_readability(readabilityNY, measure=""Flesch.Kincaid"")"
+"0","corpusNY$readbility<-readbilityNY"
+"0","yr_readability<-corpusNY[,c(""year"", ""readbility"")]"
+"0","yr_readability<-aggregate(yr_readability, by=list(yr_readability$year), FUN=mean)"
+"0","pander(yr_readability)"
+"1","
+-----------------------------
+ Group.1   year   readbility 
+--------- ------ ------------
+  2006     2006     3.441    
+
+  2007     2007     3.961    
+
+  2008     2008     3.827    
+
+  2009     2009      2.75    
+
+  2010     2010     2.579    
+
+  2013     2013     3.317    
+
+  2014     2014      2.77    
+
+  2015     2015      4.61    
+-----------------------------
+
+"
+"0","#TX readability"
+"0","readabilityTX <-corpus_subset(PASSAGES, state == 'tx')"
+"0","readbilityTX <- textstat_readability(readabilityTX, measure=""Flesch.Kincaid"")"
+"0","corpusTX$readability<-readbilityTX"
+"0","yr_readability_tx<-corpusTX[,c(""year"", ""readability"")]"
+"0","yr_readability_tx<-aggregate(yr_readability_tx, by=list(yr_readability_tx$year), FUN=mean)"
+"0","pander(yr_readability_tx)"
+"1","
+------------------------------
+ Group.1   year   readability 
+--------- ------ -------------
+  2009     2009      3.957    
+
+  2011     2011      3.83     
+
+  2013     2013      4.028    
+
+  2014     2014      4.94     
+
+  2016     2016      5.72     
+------------------------------
+
+"

@@ -1,0 +1,19 @@
+"0","library(pander)"
+"0","library(quanteda)"
+"2","quanteda version 0.9.9.50
+"
+"2","Using 3 of 4 cores for parallel computing
+"
+"2","
+Attaching package: ‘quanteda’
+
+"
+"2","The following object is masked from ‘package:utils’:
+
+    View
+
+"
+"0","#Combined Heap"
+"0","pander(summary(lm(log(corpus_summary$Types) ~log(corpus_summary$Tokens))))"
+"2","Error in eval(expr, envir, enclos) : object 'corpus_summary' not found
+"

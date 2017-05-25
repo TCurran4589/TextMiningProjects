@@ -1,0 +1,51 @@
+###preparation file
+library(data.table)
+library(quanteda)
+library(stringr)
+
+load("PRESIDENTIAL-DEBATES.rdata")
+
+debates_2016_final<-data.table(debates_2016_final)
+
+
+debates_2016_final[, year := str_extract(date,"[0-9]{4}")]
+
+debates_2016_final<-debates_2016_final[year>=2015]
+
+
+
+#lowercase all names
+debates_2016_final[, speaker := tolower(speaker)]
+
+#remove non-letter characters
+debates_2016_final[, speaker := gsub("[^[:alnum:] ]", "", speaker)] 
+
+##keep only trump / clinton responses
+debates_2016_final<-debates_2016_final[grep("trump|clin",speaker)]
+
+##remove HTML tags from content using this function
+cleanfragment <- function(htmlString) {
+htmlString <- gsub("<.*?>", "", htmlString) 
+htmlString <- gsub("\\[.*]", "", htmlString) 
+htmlString <- gsub("&.*;", "", htmlString)
+return(htmlString) 
+
+}
+
+debates_2016_final[, fragment := cleanfragment(fragment)] 
+
+##create a dummy variable indicating whether this was a primary or presidential debate
+debates_2016_final[, primary := 0]
+debates_2016_final[ grep("Candidates", debate), primary := 1]
+
+
+#lets built a corpus object
+DEBATES <- corpus(debates_2016_final$fragment) 
+DEBATES[["speaker"]] <- debates_2016_final$speaker 
+DEBATES[["debate"]] <- debates_2016_final$debate 
+DEBATES[["date"]] <- debates_2016_final$date 
+DEBATES[["primary"]] <- debates_2016_final$primary
+
+
+
+

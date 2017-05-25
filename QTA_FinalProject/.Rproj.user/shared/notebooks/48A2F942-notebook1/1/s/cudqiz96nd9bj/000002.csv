@@ -1,0 +1,4 @@
+"0","OverallReadability <- textstat_readability(PASSAGES, measure=""Flesch.Kincaid"")"
+"2","Error in textstat_readability(PASSAGES, measure = ""Flesch.Kincaid"") : 
+  object 'PASSAGES' not found
+"

@@ -1,0 +1,50 @@
+"0","###preparation file"
+"0","library(data.table)"
+"0","library(quanteda)"
+"0","library(stringr)"
+"0","library(tidyverse)"
+"2","Loading tidyverse: ggplot2
+Loading tidyverse: tibble
+Loading tidyverse: tidyr
+Loading tidyverse: readr
+Loading tidyverse: purrr
+Loading tidyverse: dplyr
+"
+"2","Conflicts with tidy packages ----------------------------------------------------------------
+"
+"2","between():   dplyr, data.table
+filter():    dplyr, stats
+first():     dplyr, data.table
+lag():       dplyr, stats
+last():      dplyr, data.table
+tokenize():  readr, quanteda
+transpose(): purrr, data.table
+"
+"0","library(pander)"
+"0","load(""PRESIDENTIAL-DEBATES.rdata"")"
+"0","debates_2016_final<-data.table(debates_2016_final)"
+"0","debates_2016_final[, year := str_extract(date,""[0-9]{4}"")]"
+"0","debates_2016_final<-debates_2016_final[year>=2015]"
+"0","#lowercase all names"
+"0","debates_2016_final[, speaker := tolower(speaker)]"
+"0","#remove non-letter characters"
+"0","debates_2016_final[, speaker := gsub(""[^[:alnum:] ]"", """", speaker)] "
+"0","##keep only trump / clinton responses"
+"0","debates_2016_final<-debates_2016_final[grep(""trump|clin"",speaker)]"
+"0","##remove HTML tags from content using this function"
+"0","cleanfragment <- function(htmlString) {"
+"0","htmlString <- gsub(""<.*?>"", """", htmlString) "
+"0","htmlString <- gsub(""\\[.*]"", """", htmlString) "
+"0","htmlString <- gsub(""&.*;"", """", htmlString)"
+"0","return(htmlString) "
+"0","}"
+"0","debates_2016_final[, fragment := cleanfragment(fragment)] "
+"0","##create a dummy variable indicating whether this was a primary or presidential debate"
+"0","debates_2016_final[, primary := 0]"
+"0","debates_2016_final[ grep(""Candidates"", debate), primary := 1]"
+"0","#lets built a corpus object"
+"0","DEBATES <- corpus(debates_2016_final$fragment) "
+"0","DEBATES[[""speaker""]] <- debates_2016_final$speaker "
+"0","DEBATES[[""debate""]] <- debates_2016_final$debate "
+"0","DEBATES[[""date""]] <- debates_2016_final$date "
+"0","DEBATES[[""primary""]] <- debates_2016_final$primary"
