@@ -1,0 +1,97 @@
+---
+title: "Curran_Thomas_HW2"
+author: "Thomas Curran"
+date: "4/17/2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+####Debating with Quanteda:
+#####1) Install the quanteda package:
+#####2) Create DEBATES Object
+```{r setup, results='hide',include=FALSE,echo=FALSE, warnings=FALSE, tidy=TRUE}
+###preparation file
+library(data.table)
+library(quanteda)
+library(stringr)
+library(tidyverse)
+
+load("PRESIDENTIAL-DEBATES.rdata")
+
+debates_2016_final<-data.table(debates_2016_final)
+
+
+debates_2016_final[, year := str_extract(date,"[0-9]{4}")]
+
+debates_2016_final<-debates_2016_final[year>=2015]
+
+
+
+#lowercase all names
+debates_2016_final[, speaker := tolower(speaker)]
+
+#remove non-letter characters
+debates_2016_final[, speaker := gsub("[^[:alnum:] ]", "", speaker)] 
+
+##keep only trump / clinton responses
+debates_2016_final<-debates_2016_final[grep("trump|clin",speaker)]
+
+##remove HTML tags from content using this function
+cleanfragment <- function(htmlString) {
+htmlString <- gsub("<.*?>", "", htmlString) 
+htmlString <- gsub("\\[.*]", "", htmlString) 
+htmlString <- gsub("&.*;", "", htmlString)
+return(htmlString) 
+
+}
+
+debates_2016_final[, fragment := cleanfragment(fragment)] 
+
+##create a dummy variable indicating whether this was a primary or presidential debate
+debates_2016_final[, primary := 0]
+debates_2016_final[ grep("Candidates", debate), primary := 1]
+
+
+#lets built a corpus object
+DEBATES <- corpus(debates_2016_final$fragment) 
+DEBATES[["speaker"]] <- debates_2016_final$speaker 
+DEBATES[["debate"]] <- debates_2016_final$debate 
+DEBATES[["date"]] <- debates_2016_final$date 
+DEBATES[["primary"]] <- debates_2016_final$primary
+```
+
+
+```{r heaps_law, results='hide',include=FALSE,echo=FALSE, warnings=FALSE, tidy=TRUE}
+#clinton speaches
+clinton <-corpus_subset(DEBATES,speaker=='clinton')
+clinton_sum<-summary(clinton)
+#before accepting democratic nomination
+clinton_0 <-corpus_subset(DEBATES,speaker=='clinton' & primary == 0)
+clinton_0_sum<-summary(clinton)
+#after accepting democratic nomination
+clinton_1 <-corpus_subset(DEBATES,speaker=='clinton' & primary == 1)
+clinton_1_sum<-summary(clinton)
+
+#trump speaches
+trump <-corpus_subset(DEBATES, speaker=='trump')
+trump_sum<-summary(trump)
+
+#before accepting nomination:
+trump_0 <-corpus_subset(DEBATES, speaker=='trump' & primary==0)
+trump_0_sum<-summary(trump_0)
+#after accepting nomination
+trump_1 <-corpus_subset(DEBATES,speaker=='trump' & primary == 1)
+trump_1_sum<-summary(trump_1)
+```
+
+```{r}
+#Trump Before Nomination
+summary(lm(log(trump_0_sum$Types) ~log(trump_0_sum$Tokens)))
+#Trump After Nomination
+summary(lm(log(trump_1_sum$Types) ~log(trump_1_sum$Tokens)))
+#Clinton Before Nomination
+summary(lm(log(clinton_0_sum$Types) ~log(clinton_0_sum$Tokens)))
+#Clinton After Nomination
+summary(lm(log(clinton_1_sum$Types) ~log(clinton_1_sum$Tokens)))
+
+```

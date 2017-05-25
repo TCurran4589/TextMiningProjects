@@ -1,0 +1,154 @@
+---
+title: "Curran_Thomas_HW2"
+author: "Thomas Curran"
+date: "4/17/2017"
+output:
+  html_document: default
+  pdf_document: default
+---
+####Debating with Quanteda:
+#####1) Install the quanteda package:
+#####2) Create DEBATES Object
+```{r setup, results='hide',include=FALSE,echo=FALSE, warnings=FALSE, tidy=TRUE}
+###preparation file
+library(data.table)
+library(quanteda)
+library(stringr)
+library(tidyverse)
+
+
+load("PRESIDENTIAL-DEBATES.rdata")
+
+debates_2016_final<-data.table(debates_2016_final)
+
+
+debates_2016_final[, year := str_extract(date,"[0-9]{4}")]
+
+debates_2016_final<-debates_2016_final[year>=2015]
+
+
+
+#lowercase all names
+debates_2016_final[, speaker := tolower(speaker)]
+
+#remove non-letter characters
+debates_2016_final[, speaker := gsub("[^[:alnum:] ]", "", speaker)] 
+
+##keep only trump / clinton responses
+debates_2016_final<-debates_2016_final[grep("trump|clin",speaker)]
+
+##remove HTML tags from content using this function
+cleanfragment <- function(htmlString) {
+htmlString <- gsub("<.*?>", "", htmlString) 
+htmlString <- gsub("\\[.*]", "", htmlString) 
+htmlString <- gsub("&.*;", "", htmlString)
+return(htmlString) 
+
+}
+
+debates_2016_final[, fragment := cleanfragment(fragment)] 
+
+##create a dummy variable indicating whether this was a primary or presidential debate
+debates_2016_final[, primary := 0]
+debates_2016_final[ grep("Candidates", debate), primary := 1]
+
+
+#lets built a corpus object
+DEBATES <- corpus(debates_2016_final$fragment) 
+DEBATES[["speaker"]] <- debates_2016_final$speaker 
+DEBATES[["debate"]] <- debates_2016_final$debate 
+DEBATES[["date"]] <- debates_2016_final$date 
+DEBATES[["primary"]] <- debates_2016_final$primary
+```
+
+
+```{r heaps_law, results='hide',include=FALSE,echo=FALSE, warnings=FALSE, tidy=TRUE}
+
+sum_debates<-summary(DEBATES)
+
+
+#clinton speaches
+clinton <-corpus_subset(DEBATES,speaker=='clinton')
+clinton_sum<-summary(clinton)
+#before accepting democratic nomination
+clinton_0 <-corpus_subset(DEBATES,speaker=='clinton' & primary == 0)
+clinton_0_sum<-summary(clinton)
+#after accepting democratic nomination
+clinton_1 <-corpus_subset(DEBATES,speaker=='clinton' & primary == 1)
+clinton_1_sum<-summary(clinton)
+
+#trump speaches
+trump <-corpus_subset(DEBATES, speaker=='trump')
+trump_sum<-summary(trump)
+
+#before accepting nomination:
+trump_0 <-corpus_subset(DEBATES, speaker=='trump' & primary==0)
+trump_0_sum<-summary(trump_0)
+#after accepting nomination
+trump_1 <-corpus_subset(DEBATES,speaker=='trump' & primary == 1)
+trump_1_sum<-summary(trump_1)
+```
+
+```{r summaries}
+#Trump Before Nomination
+summary(lm(log(trump_0_sum$Types) ~log(trump_0_sum$Tokens)))
+#Trump After Nomination
+summary(lm(log(trump_1_sum$Types) ~log(trump_1_sum$Tokens)))
+#Clinton Before Nomination
+summary(lm(log(clinton_0_sum$Types) ~log(clinton_0_sum$Tokens)))
+#Clinton After Nomination
+summary(lm(log(clinton_1_sum$Types) ~log(clinton_1_sum$Tokens)))
+```
+
+```{r candidate_heap}
+ggplot(sum_debates, aes(sum_debates$Types, sum_debates$Tokens))+geom_point()+
+  geom_smooth(method="lm")+
+  facet_grid(~speaker)
+```
+
+####4) Lexical Diversity for each Candidate Before and After Accepting Party's Nomination
+```{r lexical_diveristy, }
+#Lexical Diversity: Trump before nomination
+trump0_dfm<-dfm(corpus_subset(DEBATES, speaker=='trump' & primary==0))
+lexdiv_trump0<-textstat_lexdiv(trump0_dfm, measure="TTR")
+mean(lexdiv_trump0)
+#Lexical Diversity: Trump after nomination
+trump1_dfm<-dfm(corpus_subset(DEBATES, speaker=='trump' & primary==1))
+lexdiv_trump1<-textstat_lexdiv(trump1_dfm, measure="TTR")
+mean(lexdiv_trump1)
+#Lexical Diversity: Clinton before nomination
+clinton0_dfm<-dfm(corpus_subset(DEBATES, speaker=='clinton' & primary==0))
+lexdiv_clinton0<-textstat_lexdiv(clinton0_dfm, measure="TTR")
+mean(lexdiv_clinton0)
+#Lexical Diversity: Clinton after nomination
+clinton1_dfm<-dfm(corpus_subset(DEBATES, speaker=='clinton' & primary==1))
+lexdiv_clinton0<-textstat_lexdiv(clinton1_dfm, measure="TTR")
+mean(lexdiv_clinton0)
+
+```
+
+####5)
+
+
+####6)
+
+```{r remove_stopwords}
+DEBATES_nostop <- dfm(DEBATES, remove=stopwords("english"))
+
+Debates_clinton_nostop <- dfm(clinton, remove = stopwords("english"))
+
+Debates_trump_nostop <- dfm(trump, remove = stopwords("english"))
+```
+
+####7)
+```{r}
+
+
+
+
+
+```
+
+
+
+####8)

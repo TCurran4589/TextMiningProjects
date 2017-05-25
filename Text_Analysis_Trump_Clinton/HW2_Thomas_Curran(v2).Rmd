@@ -1,0 +1,292 @@
+---
+title: "HW2_Curran(v2)"
+author: "Thomas Curran"
+date: "4/26/2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+Debating with Quanteda:
+1) Install the quanteda package:
+2) Create DEBATES Object
+```{r setup,results='hide',, warnings=FALSE, tidy=TRUE}
+###preparation file
+library(data.table)
+library(quanteda)
+library(stringr)
+library(tidyverse)
+library(pander)
+load("PRESIDENTIAL-DEBATES.rdata")
+debates_2016_final<-data.table(debates_2016_final)
+debates_2016_final[, year := str_extract(date,"[0-9]{4}")]
+debates_2016_final<-debates_2016_final[year>=2015]
+#lowercase all names
+debates_2016_final[, speaker := tolower(speaker)]
+
+#remove non-letter characters
+debates_2016_final[, speaker := gsub("[^[:alnum:] ]", "", speaker)] 
+
+##keep only trump / clinton responses
+debates_2016_final<-debates_2016_final[grep("trump|clin",speaker)]
+
+##remove HTML tags from content using this function
+cleanfragment <- function(htmlString) {
+htmlString <- gsub("<.*?>", "", htmlString) 
+htmlString <- gsub("\\[.*]", "", htmlString) 
+htmlString <- gsub("&.*;", "", htmlString)
+return(htmlString) 
+}
+
+debates_2016_final[, fragment := cleanfragment(fragment)] 
+
+##create a dummy variable indicating whether this was a primary or presidential debate
+debates_2016_final[, primary := 0]
+debates_2016_final[ grep("Candidates", debate), primary := 1]
+
+#lets built a corpus object
+
+DEBATES <- corpus(debates_2016_final$fragment) 
+DEBATES[["speaker"]] <- debates_2016_final$speaker 
+DEBATES[["debate"]] <- debates_2016_final$debate 
+DEBATES[["date"]] <- debates_2016_final$date 
+DEBATES[["primary"]] <- debates_2016_final$primary
+
+```
+3) Explore to what extent the Heap's Law applies for trump vs Clinton. Is it 
+stronger or weaker for either candidate?
+```{r heaps_law, results ='hide',warnings=FALSE, tidy=TRUE}
+
+
+debate_sum<-summary(DEBATES)
+#clinton speaches
+clinton <-corpus_subset(DEBATES,speaker=='clinton')
+clinton_sum<-summary(clinton)
+
+#before accepting democratic nomination
+clinton_0 <-corpus_subset(DEBATES,speaker=='clinton' & primary == 0)
+clinton_0_sum<-summary(clinton)
+
+#after accepting democratic nomination
+clinton_1 <-corpus_subset(DEBATES,speaker=='clinton' & primary == 1)
+clinton_1_sum<-summary(clinton)
+
+#trump speaches
+trump <-corpus_subset(DEBATES, speaker=='trump')
+trump_sum<-summary(trump)
+
+#before accepting nomination:
+trump_0 <-corpus_subset(DEBATES, speaker=='trump' & primary==0)
+trump_0_sum<-summary(trump_0)
+
+#after accepting nomination
+
+trump_1 <-corpus_subset(DEBATES,speaker=='trump' & primary == 1)
+trump_1_sum<-summary(trump_1)
+
+```
+
+```{r candidate_heap_summary}
+#Trump Heap
+pander(summary(lm(log(trump_sum$Types) ~log(trump_sum$Tokens))))
+
+#Clinton Heap
+pander(summary(lm(log(clinton_sum$Types) ~log(clinton_sum$Tokens))))
+
+```
+
+```{r speaker_facet_plot, }
+
+ggplot(debate_sum, aes(log(debate_sum$Types), log(debate_sum$Tokens))) +
+  geom_smooth(method='lm')+geom_point()+facet_wrap(~speaker)
+
+
+
+```
+4)Analyze the lexical diversity across the candidates before and after they became their parties' respective candidates:
+```{r clinton_readability,}
+################################################################################
+# Candidate Readbility Scores
+################################################################################
+#Clinton readability After Nomination
+clinton0_readability <- textstat_readability(clinton_1, measure="Flesch.Kincaid")
+clinton0_readability<-mean(clinton0_readability)
+#Clinton Readability Before Nomination
+clinton1_readability <- textstat_readability(clinton_0, measure="Flesch.Kincaid")
+clinton1_readability<-mean(clinton1_readability)
+
+```
+```{r trump_readability, }
+#Trump Readability Before Nomination
+trump0_readability <- textstat_readability(trump_0, measure="Flesch.Kincaid")
+trump0_readability<-mean(trump0_readability)
+
+#Trump Readbility After Nomination
+#trump0_readability <- textstat_readability(trump_1, measure="Flesch.Kincaid")
+#mean(trump0_readability)
+```
+Note: the Readability Score for Trump before primary kept throwing errors even after using code suggestions posted in Piazza and in class
+
+Readability Scores for Candidates Before and After Primary
+```{r readability_table,}
+test<-1
+
+
+candidates = c("Clinton Before Nomination","Clinton After Nomination", "Trump Before Nomination","Trump After Nomination")
+scores = c(clinton0_readability, clinton1_readability, trump0_readability, test)
+readability<-data.frame(candidates, scores)
+pander(readability)
+
+
+```
+Note: The lexical diversity for Trump after the nomination was throwin an 'Inf' result, not sure what is causing that result.
+
+Lexical Diversity Scores for Candidates Before and After Primaries
+```{r lexical_diversity, }
+################################################################################
+# Candidate Lexile Diversity Scores:
+################################################################################
+#Lexical Diversity: Trump before nomination
+trump0_dfm<-dfm(trump_0)
+lexdiv_trump0<-textstat_lexdiv(trump0_dfm, measure="TTR")
+lexdiv_trump0<-mean(lexdiv_trump0)
+
+#Lexical Diversity: Trump after nomination
+trump1_dfm<-dfm(trump_1)
+lexdiv_trump1<-textstat_lexdiv(trump1_dfm, measure="TTR")
+lexdiv_trump1<-mean(lexdiv_trump1)
+#Lexical Diversity: Clinton before nomination
+clinton0_dfm<-dfm(clinton_0)
+lexdiv_clinton0<-textstat_lexdiv(clinton0_dfm, measure="TTR")
+lexdiv_clinton0<-mean(lexdiv_clinton0)
+#Lexical Diversity: Clinton after nomination
+clinton1_dfm<-dfm(clinton_1)
+lexdiv_clinton1<-textstat_lexdiv(clinton1_dfm, measure="TTR")
+lexdiv_clinton1<-mean(lexdiv_clinton1)
+
+candidates_lexdiv = c("Clinton Before Nomination","Clinton After Nomination", "Trump Before Nomination","Trump After Nomination")
+
+scores_lexdiv = c(lexdiv_clinton0, lexdiv_clinton1, lexdiv_trump0, lexdiv_trump1)
+
+lexdiv_table <-pander(data.frame(candidates_lexdiv, scores_lexdiv))
+lexdiv_table
+```
+
+5) Do you have a hypothesis why patterns may be more or less pronounced between trump versus clinton? How could you test this?
+
+The lexical diversity that exists before and after the primaries could be explained by the fact that during the primary debates there were more individuals debating than in the presidential debates. having more people debating meant less time speaking, resulting in shorter responses/fragments for each candidate. Given Heap's Law the shorter the fragment the lower the lexical diversity. Trump's lexical diversity may have the most signficant change simply because there were more people at the Republican debates as opposed to the Democratic debates which were only three people. Once it was the presidential debates, both candidates had more time to speak since they shared the time and stage with one other person, which resulted in longer fragments, and which according to Heap's Law lead to more lexical diversity. 
+
+6) Remove Stopwords from Corpus
+```{r remove_stopwords, }
+################################################################################
+#6) Remove stopwords from corpus
+################################################################################
+DEBATES_nostop <- dfm(DEBATES, remove=stopwords("english"))
+
+Debates_clinton_nostop <- dfm(clinton, remove = stopwords("english"))
+
+Debates_trump_nostop <- dfm(trump, remove = stopwords("english"))
+
+```
+
+7) Using the tokenize function, construct seperate bi-grams for the Hilary
+Clinton/Donald Trump parts of the corpus. Tabulte the ten most frequent bi-grams
+by speaker. Are these informative? Why or why not?
+
+These bi-grams are informative as the are insights into themese in the debates as well as between candidates. The frequency of the bigrams shows the Clinton frequently spoke about former President Obama and Senator Bernie Sanders while Trump's bi-grams are less informative but still telling of the candidate's message. Trump's bi-grams seem to include more common language than Clinton's, this can also be explained by the readability score calculated for each candidate in the previous question. The Debates bi-gram is usefull because it reflects the campaign issues in the past election include health care and wall street. However, these n-grams do not provide context in terms of attitude or the message about each topic, it only reflects the frequency in which they appear in the corpus
+
+Debate bi-gram
+```{r debate_bigragm, }
+#Debates bi-gram
+tok <- quanteda::removeFeatures(quanteda::tokenize(DEBATES, remove_punct=TRUE), stopwords("english"))
+tok <-unlist(tokens_ngrams(tok,n=2, concatenator=" "))
+df<- data.table("token"=tok, "president"=names(tok))
+df<- df[,.N, by=token][order(N, decreasing = TRUE)]
+df$N<-as.numeric(df$N)
+pander(df[1:10])
+```
+Trump Bi-grams
+```{r trump_bigram, }
+#trump bi-gram
+tok_trump <- quanteda::removeFeatures(quanteda::tokenize(trump, remove_punct=TRUE), stopwords("english"))
+tok_trump <-unlist(tokens_ngrams(tok_trump,n=2, concatenator=" "))
+df1<- data.table("token"=tok_trump, "president"=names(tok_trump))
+df1<- df1[,.N, by=token][order(N, decreasing = TRUE)]
+df1$N<-as.numeric(df1$N)
+pander(df1[1:10])
+
+```
+
+Clinton bi-gram
+```{r clinton_bigra,, }
+#Clinton bi-gram
+tok_clinton <- quanteda::removeFeatures(quanteda::tokenize(corpus_subset(DEBATES, speaker == 'clinton'), remove_punct=TRUE), stopwords("english"))
+tok_clinton <-unlist(tokens_ngrams(tok_clinton,n=2, concatenator=" "))
+df2<- data.table("token"=tok_clinton, "president"=names(tok_clinton))
+df2<- df2[,.N, by=token][order(N, decreasing = TRUE)]
+df2$N<-as.numeric(df2$N)
+pander(df2[1:10])
+
+
+```
+
+8) Using the collocation function in quanteda (which takes a tokenize object)
+construct collocations based on Chi2 test for each speaker. Order by Chi2
+test statistic. What do you notice or what is strange? Can you provide a
+formal reasoning relating to the Chi2 test statistic formula?
+
+In the Chi2 test for candidates, it appears that the count of the top two or three words is much greater than the next top bi-grams while the X2 statistic remains the same. The formal reasoning relating to the chi2 test statistic formula is that it describes the comparison between observered frequencies in the table with the frequences expected for independence. The large chi2 test tells us we can reject the t-test. Essenitally, the chi2 tells us that "Afforable" and "Care", accounting for capitlization, are extremely likely to appear togethor as opposed to apart. In other words, the expected frequency of "Affordable" is marginal probabily of "Care" occuring as the first of a bigram times the marginal probablity of "care occuring as the second. "
+
+Clinton Collocation
+```{r collocation_clinton, }
+#Clinton Chi2 Test
+token_c<- tokens(corpus_subset(DEBATES, speaker=='clinton'))
+clinton_collocation <- textstat_collocations(token_c, method="chi2")
+pander(arrange(clinton_collocation[1:10], desc(count)) )
+```
+
+Trump Collocation
+```{r collocation_trump, }
+#Trump Chi2
+token_t<- tokens(corpus_subset(DEBATES, speaker=='trump'))
+trump_collocation <- textstat_collocations(token_t, method="chi2")
+
+pander(arrange(trump_collocation[1:10], desc(count)))
+
+```
+
+9) Using	the	code	provided	in	the	lectures,	identify	collocations	that	are	
+distinct	to	Trump	vs	Clinton. Based	on	your	perception	of	each	candidate, do	the	results	of	this	analysis	make	sense? Provide	a	brief	answer where	
+you	summarize	the	most	important	results	and	your	explanations.
+
+In this chi2 test, we are investigating the dissimilarities between the candidate's words. The null hypothesis in this case is that the probablity of observing a word or pair of words is independent across speakers, in other words that a phrase that appears in the corpus of one candidate, doesn't appear in the corpus of another. The table below essenitally joins two data frames of bigrams using the bi-gram as the key and adding columns for the number of times it appears by each speaker. The first several words appear to be either heavily used by one cadidate or ther other, for example the first phrase "many people" has a chi2 score of 4.084, Furthermore, the chi2 dissimilarities test shows that the two candidates have very different speaking patters has made evident by the frequency count for matched bi-grams and the corresponding chi2 generated. In class, comparing the Obama and Bush state of the unions has tokens such as "Social Secruity" having a chi2 score of 29.76, but in the case of Clinton versus Trump the highest chi2 was approximately 4, reinforcing that the speakers had very different speaking styles and different characteristics to their speaking patterns and topics. 
+
+```{r chi2}
+
+tok <- quanteda::removeFeatures(quanteda::tokenize(DEBATES, remove_punct=TRUE), stopwords("english"))
+tok <-unlist(tokens_ngrams(tok,n=2, concatenator=" "))
+tok<- data.table("text"=names(tok),"token"=tok)
+tok[,speaker:=DEBATES[["speaker"]]]
+tok<-tok[,.N,by=c("speaker","token")]
+pander(tok[order(N, decreasing=TRUE)][1:20])
+
+clinton_join<- tok[speaker=="clinton"][,list(token, clintoncount=as.numeric(N))]
+trump_join <-tok[speaker=="trump"][,list(token, trumpcount=as.numeric(N))]
+
+wide<-merge(clinton_join, trump_join)
+wide[is.na(clintoncount)]$clintoncount <-0
+wide[is.na(trumpcount)]$trumpcount<-0
+wide[,':='(totalcount, clintoncount+trumpcount)]
+wide<-wide[order(totalcount, decreasing=TRUE)][totalcount>0]
+wide[,':='(totalclinton, sum(clintoncount))]
+wide[,':='(totaltrump, sum(trumpcount))]
+wide[, `:=`(chi2, (totalclinton + totaltrump) * (trumpcount * (totalclinton - clintoncount) -
+clintoncount * (totaltrump - trumpcount))^2/((trumpcount + clintoncount) * (trumpcount +
+(totaltrump - trumpcount)) * (clintoncount + (totalclinton - clintoncount)) * ((totaltrump -
+trumpcount) + (totalclinton - clintoncount))))]
+
+pander(wide[1:20][order(chi2, decreasing=TRUE)])
+
+
+
+```
+

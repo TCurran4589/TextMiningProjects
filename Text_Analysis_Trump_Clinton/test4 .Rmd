@@ -1,0 +1,21 @@
+---
+title: "scratch 4"
+author: "Thomas Curran"
+date: "4/27/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+library(quanteda)
+txts <- c("quanteda is a package for quantitative text analysis",
+"quantitative text analysis is a rapidly growing field",
+"The population is rapidly growing")
+toks <- tokens(txts)
+
+lapply(clinton, tokens)
+
+print(clinton[1:2])
+
+print("hello")
+```
